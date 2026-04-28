@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; padding: 20px; font-family: sans-serif; background: white; }
+    #legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; font-size: 12px; color: #888; justify-content: center; }
+    .leg-item { display: flex; align-items: center; gap: 4px; }
+    .leg-box { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  </style>
+</head>
+<body>
+  <div style="position:relative;width:100%;height:480px;">
+    <canvas id="c"></canvas>
+  </div>
+  <div id="legend">
+    <span class="leg-item"><span class="leg-box" style="background:#378ADD"></span>Acuáticos</span>
+    <span class="leg-item"><span class="leg-box" style="background:#EF9F27"></span>En Equipo</span>
+    <span class="leg-item"><span class="leg-box" style="background:#E24B4A"></span>Atletismo</span>
+    <span class="leg-item"><span class="leg-box" style="background:#1D9E75"></span>Remo y Canotaje</span>
+    <span class="leg-item"><span class="leg-box" style="background:#7F77DD"></span>Combate y Fuerza</span>
+    <span class="leg-item"><span class="leg-box" style="background:#888780"></span>Otros</span>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script>
+    const countries = ['Estados Unidos','Rusia','Reino Unido'];
+    const disciplines = ['Acuáticos','En Equipo','Atletismo','Remo y Canotaje','Combate y Fuerza','Otros'];
+    const colors = ['#378ADD','#EF9F27','#E24B4A','#1D9E75','#7F77DD','#888780'];
+    const rawData = [
+      [1184, 383, 142],
+      [790,  697, 207],
+      [994,  367, 295],
+      [524,  314, 394],
+      [355,  606, 122],
+      [738,  692, 560],
+    ];
+
+    const connectorPlugin = {
+      id: 'connectors',
+      afterDraw(chart) {
+        const ctx = chart.ctx;
+        const nDatasets = chart.data.datasets.length;
+        const nCountries = countries.length;
+        const scaleY = chart.scales.y;
+
+        for (let ci = 0; ci < nCountries - 1; ci++) {
+          let cumRight = 0;
+          let cumLeft = 0;
+
+          for (let di = 0; di < nDatasets; di++) {
+            const barR = chart.getDatasetMeta(di).data[ci];
+            const barL = chart.getDatasetMeta(di).data[ci + 1];
+            if (!barR || !barL) continue;
+
+            const val     = rawData[di][ci];
+            const valNext = rawData[di][ci + 1];
+
+            const yBottomR = scaleY.getPixelForValue(cumRight);
+            const yTopR    = scaleY.getPixelForValue(cumRight + val);
+            const yBottomL = scaleY.getPixelForValue(cumLeft);
+            const yTopL    = scaleY.getPixelForValue(cumLeft + valNext);
+
+            const xRight = barR.x + barR.width / 2;
+            const xLeft  = barL.x - barL.width / 2;
+
+            ctx.save();
+            ctx.globalAlpha = 0.45;
+            ctx.fillStyle = colors[di];
+            ctx.beginPath();
+            ctx.moveTo(xRight, yTopR);
+            ctx.lineTo(xLeft,  yTopL);
+            ctx.lineTo(xLeft,  yBottomL);
+            ctx.lineTo(xRight, yBottomR);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
+            ctx.save();
+            ctx.globalAlpha = 0.9;
+            ctx.strokeStyle = colors[di];
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath();
+            ctx.moveTo(xRight, yTopR);
+            ctx.lineTo(xLeft,  yTopL);
+            ctx.stroke();
+            ctx.restore();
+
+            cumRight += val;
+            cumLeft  += valNext;
+          }
+        }
+      }
+    };
+
+    new Chart(document.getElementById('c'), {
+      type: 'bar',
+      plugins: [connectorPlugin],
+      data: {
+        labels: countries,
+        datasets: disciplines.map((d, i) => ({
+          label: d,
+          data: rawData[i],
+          backgroundColor: colors[i],
+          borderColor: '#fff',
+          borderWidth: 2,
+        }))
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { font: { size: 13 }, color: '#888' } },
+          y: { stacked: true, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { color: '#888' } }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
